@@ -26,7 +26,7 @@ if "GOOGLE_API_KEY" not in os.environ:
     os.environ["GOOGLE_API_KEY"] = getpass.getpass("GEMINI API KEY")
 
 
-def build_index(pdf_path: str):
+def build_index(pdf_path: str, save_path: str = "db/faiss_index"):
     # index the PDF into chunks and create a FAISS vector store
     loader = PyPDFLoader(pdf_path)
     docs = loader.load()  # one Document per page
@@ -39,10 +39,15 @@ def build_index(pdf_path: str):
     chunks = splitter.split_documents(docs)
     # create FAISS vector store
     # embeddings = OpenAIEmbeddings()
-    embeddings = GoogleGenerativeAIEmbeddings(model='models/embedding-001', api_key=SecretStr('GEMINI_API_KEY'))
+    embeddings = GoogleGenerativeAIEmbeddings(model='models/embedding-001', api_key=SecretStr(os.environ['GOOGLE_API_KEY']))
     db = FAISS.from_documents(chunks, embeddings)
-    return db
 
+    # Save the index to disk
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    db.save_local(save_path)
+    print(f"Index saved to {save_path}")
+
+    return db
 
 def answer_question(db, question: str, k: int = 4):
     # Retrieve top-k chunks
